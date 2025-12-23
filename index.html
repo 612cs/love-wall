@@ -75,14 +75,16 @@
             width: 100%;
         }
 
+        /* 修复核心：网格单元格样式 */
         .grid-item {
-            position: relative;
+            position: relative; /* 关键：作为绝对定位子元素的锚点 */
             background-color: rgba(255, 255, 255, 0.1);
             border-radius: 8px;
             overflow: hidden;
             cursor: pointer;
             transition: all 0.2s ease;
             border: 1px solid rgba(255, 255, 255, 0.05);
+            /* 这里不设置 overflow: hidden 以外的限制，大小由 grid 决定 */
         }
 
         .grid-item:hover {
@@ -92,19 +94,28 @@
             border-color: #ec4899;
         }
 
+        /* 修复核心：图片绝对定位 */
         .grid-item img {
+            position: absolute;
+            top: 0;
+            left: 0;
             width: 100%;
             height: 100%;
-            object-fit: cover;
+            object-fit: cover; /* 关键：智能裁剪 */
             display: block;
         }
 
+        /* 修复核心：占位符绝对定位 */
         .empty-placeholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100%;
             color: #64748b;
             transition: all 0.2s;
         }
@@ -161,7 +172,7 @@
             animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
 
-        /* 新版布局按钮样式 */
+        /* 布局按钮样式 */
         .sidebar-panel {
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid rgba(255, 255, 255, 0.05);
@@ -264,7 +275,7 @@
         <p class="text-gray-400 text-sm">在这漫天星河下，拼凑属于我们的回忆</p>
     </header>
 
-    <!-- 主布局容器 (三栏结构: 左侧调节 - 中间展示 - 右侧控制) -->
+    <!-- 主布局容器 (三栏结构) -->
     <main class="w-full max-w-6xl mx-auto px-4 z-10 relative flex flex-col lg:flex-row gap-8 items-start">
         
         <!-- 左侧：布局调节 -->
@@ -343,7 +354,7 @@
 
     </main>
 
-    <!-- 通用确认模态框 (复用) -->
+    <!-- 通用确认模态框 -->
     <div id="confirmModal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50 hidden backdrop-blur-sm">
         <div class="bg-slate-800 p-6 rounded-2xl border border-pink-500/30 max-w-xs w-full text-center shadow-2xl modal-enter">
             <div class="mb-4 text-pink-400 text-3xl"><i class="fas fa-exclamation-circle animate-pulse"></i></div>
@@ -393,7 +404,9 @@
                 cols: 7, rows: 6, maxPhotos: 19,
                 cells: [
                     cell(1,2), cell(1,3), cell(1,5), cell(1,6),
-                    cell(2,1, 1, 2), cell(2,2), cell(2,3, 3, 3), cell(2,6), cell(2,7, 1, 2),
+                    cell(2,1, 1, 2), cell(2,2), 
+                    cell(2,3, 3, 3), // C位大图
+                    cell(2,6), cell(2,7, 1, 2),
                     cell(3,2), cell(3,6),
                     cell(4,2), cell(4,6),
                     cell(5,3), cell(5,4), cell(5,5),
@@ -406,7 +419,7 @@
         
         let currentLayoutKey = 'classic';
         let photos = []; 
-        let modalAction = null; // 存储模态框确认后的回调函数
+        let modalAction = null;
         
         const gridEl = document.getElementById('heartGrid');
         const countDisplay = document.getElementById('countDisplay');
@@ -422,11 +435,10 @@
             updateExportBtnState();
         }
 
-        // 生成星星
         function createStars() {
             const container = document.getElementById('starsContainer');
             const starCount = 100;
-            container.innerHTML = ''; // Clear existing
+            container.innerHTML = '';
             
             for (let i = 0; i < starCount; i++) {
                 const star = document.createElement('div');
@@ -472,10 +484,14 @@
                 div.style.gridColumnEnd = `span ${cellDef.w}`;
                 div.style.gridRowEnd = `span ${cellDef.h}`;
                 
+                // 关键修复：
+                // 对于 1x1 单元格，我们强制使用 aspect-ratio: 1/1 来支撑行高
+                // 对于跨行/跨列单元格，我们不设置 aspect-ratio，也不设置固定 height
+                // 它们会自动填充由 1x1 单元格撑开的网格区域
                 if (cellDef.w === 1 && cellDef.h === 1) {
                     div.style.aspectRatio = '1 / 1';
                 } else {
-                    div.style.height = '100%';
+                    div.style.height = '100%'; // 确保填充网格区域
                 }
 
                 div.dataset.index = index;
@@ -547,7 +563,6 @@
                 }
             });
             
-            // 庆祝
             launchRocket();
             setTimeout(launchRocket, 300);
             showToast('照片上传成功');
@@ -589,14 +604,12 @@
             }
         }
 
-        // --- 通用模态框逻辑 ---
-        
+        // --- 模态框逻辑 ---
         function showModal(type) {
             const titleEl = document.getElementById('modalTitle');
             const descEl = document.getElementById('modalDesc');
             const confirmBtn = document.getElementById('modalConfirmBtn');
             
-            // 解绑之前的事件，防止多次触发
             const newBtn = confirmBtn.cloneNode(true);
             confirmBtn.parentNode.replaceChild(newBtn, confirmBtn);
 
@@ -631,17 +644,14 @@
             showToast('已清空所有照片');
         }
 
-        // --- 导出相关逻辑 ---
-
+        // --- 导出逻辑 ---
         function updateExportBtnState() {
-            // 获取当前有效照片数量
             const layout = layouts[currentLayoutKey];
             let count = 0;
             for(let i=0; i<layout.maxPhotos; i++) {
                 if(photos[i]) count++;
             }
             
-            // 如果没有照片，禁用按钮
             if (count === 0) {
                 exportBtn.disabled = true;
                 exportBtn.classList.add('opacity-50', 'cursor-not-allowed');
@@ -651,7 +661,6 @@
             }
         }
 
-        // 尝试导出：检查是否填满
         function tryExport() {
             const layout = layouts[currentLayoutKey];
             let count = 0;
@@ -660,10 +669,8 @@
             }
             
             if (count < layout.maxPhotos) {
-                // 未填满，弹窗警告
                 showModal('incomplete');
             } else {
-                // 已填满，直接导出
                 executeExport();
             }
         }
@@ -726,12 +733,9 @@
                 if(photos[i]) count++;
             }
             countDisplay.innerText = count;
-            
-            // 每次数量更新，检查导出按钮状态
             updateExportBtnState();
         }
 
-        // Toast Logic
         function showToast(msg) {
             const toast = document.getElementById('toast');
             toast.innerHTML = `<i class="fas fa-check-circle text-green-500 mr-2"></i> <span>${msg}</span>`;
@@ -741,7 +745,7 @@
             }, 3000);
         }
 
-        // --- 5. 升级版烟花特效 (Rocket + Explosion) ---
+        // --- 5. 烟花特效 ---
         const canvas = document.getElementById('fireworksCanvas');
         const ctx = canvas.getContext('2d');
         
