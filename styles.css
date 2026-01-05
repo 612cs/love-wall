@@ -1,0 +1,380 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+
+body {
+    font-family: 'Noto Sans SC', sans-serif;
+    background: radial-gradient(ellipse at bottom, #1b2735 0%, #090a0f 100%);
+    color: #e2e8f0;
+    overflow-x: hidden;
+    min-height: 100vh;
+    position: relative;
+    /* 禁用移动端长按选择和弹出菜单 */
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+}
+
+/* --- 星空背景动画 --- */
+.stars-container {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    z-index: -2;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.star {
+    position: absolute;
+    background: white;
+    border-radius: 50%;
+    animation: twinkle var(--duration) ease-in-out infinite;
+    opacity: var(--opacity);
+}
+
+@keyframes twinkle {
+    0%, 100% { opacity: var(--opacity); transform: scale(1); }
+    50% { opacity: 0.2; transform: scale(0.8); }
+}
+
+/* --- 烟花 Canvas --- */
+#fireworksCanvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    pointer-events: none;
+}
+
+/* --- UI 组件样式 --- */
+
+.heart-grid-container {
+    /* background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 20px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5); */
+    transition: all 0.3s ease;
+    width: 100%;
+}
+
+.heart-grid {
+    display: grid;
+    gap: 6px;
+    width: 100%;
+}
+
+/* 修复核心：网格单元格样式 */
+.grid-item {
+    position: relative; /* 关键：作为绝对定位子元素的锚点 */
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    /* 禁用移动端默认触摸行为 */
+    touch-action: none;
+    /* 这里不设置 overflow: hidden 以外的限制，大小由 grid 决定 */
+}
+
+.grid-item:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 15px rgba(236, 72, 153, 0.6);
+    z-index: 10;
+    border-color: #ec4899;
+}
+
+/* 拖拽相关样式 */
+.grid-item.draggable-item:active {
+    cursor: grabbing;
+}
+
+.grid-item.dragging {
+    /* opacity: 0.5;
+    transform: scale(0.95);
+    z-index: 100; */
+}
+
+.grid-item.drag-over {
+    border: 2px dashed #ec4899;
+    background-color: rgba(236, 72, 153, 0.2);
+    transform: scale(1.05);
+    box-shadow: 0 0 20px rgba(236, 72, 153, 0.8);
+}
+
+/* 移动端长按可拖拽状态 */
+.grid-item.long-press-active {
+    animation: longPressReady 0.3s ease-out forwards;
+    box-shadow: 0 0 30px rgba(236, 72, 153, 1), 0 0 60px rgba(236, 72, 153, 0.5);
+    border: 2px solid #ec4899;
+    z-index: 100;
+}
+
+@keyframes longPressReady {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1.05); }
+}
+
+/* 移动端拖拽中状态 */
+.grid-item.touch-dragging {
+    opacity: 0.8;
+    transform: scale(1.1) rotate(2deg);
+    z-index: 1000;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+    transition: none;
+}
+
+/* 拖拽手柄样式：右下角小图标 */
+.drag-handle {
+    position: absolute;
+    right: 0px;
+    bottom: 0px;
+    width: 22px;
+    height: 22px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.7);
+    color: #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    cursor: grab;
+    z-index: 6;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+}
+
+.grid-item:hover .drag-handle {
+    opacity: 1;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+    transform: scale(0.95);
+}
+
+/* 修复核心：图片绝对定位 */
+.grid-item img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* 关键：智能裁剪 */
+    display: block;
+}
+
+/* 修复核心：占位符绝对定位 */
+.empty-placeholder {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    transition: all 0.2s;
+}
+
+.grid-item:hover .empty-placeholder {
+    background-color: rgba(236, 72, 153, 0.2);
+    color: #fbcfe8;
+}
+
+.icon-size-sm { font-size: 1.2rem; }
+.icon-size-lg { font-size: 2.5rem; }
+
+/* 导出时的特定样式覆盖 */
+.exporting .heart-grid-container {
+    background: #0f172a !important; 
+    box-shadow: none !important;
+    border: none !important;
+    backdrop-filter: none !important;
+}
+
+.exporting .grid-item {
+    border-radius: 2px;
+    border: none;
+}
+
+@keyframes popIn {
+    0% { transform: scale(0.8); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.image-loaded {
+    animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* 布局按钮样式 */
+.sidebar-panel {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 16px;
+    padding: 20px;
+    backdrop-filter: blur(5px);
+}
+
+.layout-btn {
+    background: rgba(255, 255, 255, 0.05);
+    color: #94a3b8;
+    border: 1px solid rgba(255,255,255,0.1);
+    width: 100%;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 16px;
+    border-radius: 12px;
+    margin-bottom: 8px;
+    transition: all 0.2s;
+}
+.layout-btn i {
+    transform: translateY(2px);
+}
+.layout-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #e2e8f0;
+}
+.layout-btn.active {
+    background-color: #ec4899;
+    color: white;
+    border-color: #ec4899;
+    box-shadow: 0 4px 15px rgba(236, 72, 153, 0.3);
+}
+
+/* 控制按钮垂直样式 */
+.control-btn {
+    width: 100%;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 12px;
+    border-radius: 12px;
+    transition: all 0.2s;
+    font-weight: 500;
+}
+.control-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.neon-text {
+    text-shadow: 0 0 5px #ec4899, 0 0 10px #ec4899, 0 0 20px #db2777;
+}
+
+/* --- 响应式：小屏时让两个侧边面板并排一行 --- */
+@media (max-width: 1023.98px) {
+    /* 覆盖 Tailwind 的 flex-col，让主容器横向排布并允许换行 */
+    main.main-layout {
+        display: flex;
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    /* 中间爱心墙区域占满第一行 */
+    .main-layout > section {
+        flex: 0 0 100%;
+        width: 100%;
+        order: 1;
+    }
+    .sidebar-panel {
+        padding: 8px;
+    }
+
+    /* 左右两个侧边栏在第二行各占一半宽度，组成一行 */
+    .main-layout > aside {
+        flex: 0 0 calc(50% - 8px);
+        width: calc(50% - 8px);
+        order: 2;
+        /* 超出隐藏 */
+        overflow: hidden;
+    }
+    .sidebar-hint {
+        font-size: 10px;
+    }
+    .sidebar-panel p{
+        font-size: 10px;
+    }
+}
+
+/* 弹窗动画 */
+.modal-enter {
+    animation: modalFadeIn 0.2s ease-out forwards;
+}
+@keyframes modalFadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* Toast 提示 */
+#toast {
+    position: fixed;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: rgba(255, 255, 255, 0.9);
+    color: #1f2937;
+    padding: 10px 24px;
+    border-radius: 50px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    font-weight: 500;
+    z-index: 100;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    opacity: 0;
+}
+#toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+}
+
+/* --- 图片预览模态框样式 --- */
+#imagePreviewModal {
+    animation: fadeIn 0.25s ease-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+#imagePreviewModal > div {
+    animation: modalSlideUp 0.3s ease-out forwards;
+}
+
+@keyframes modalSlideUp {
+    from { 
+        opacity: 0; 
+        transform: translateY(20px) scale(0.98); 
+    }
+    to { 
+        opacity: 1; 
+        transform: translateY(0) scale(1); 
+    }
+}
+
+#previewImage {
+    display: block;
+    background: #0f172a;
+}
+
+/* 预览模态框中的按钮样式调整 */
+#imagePreviewModal .control-btn {
+    width: auto;
+    margin-bottom: 0;
+    padding: 12px 24px;
+}
+
